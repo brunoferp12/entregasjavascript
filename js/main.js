@@ -1,106 +1,344 @@
 
-const alumnos = [];
 
-//Registro de alumnos.
-function registrarAlumno(nombre, notaMat, notaLen, notaCie) {
-  if (nombre === "" || nombre === null || nombre === undefined) {
-    console.log("Nombre inválido. No se registró el alumno.");
-    return;
-  }
+// Storage 
 
-//Condición para notas válidas.
-  if (
-    notaMat < 0 || notaMat > 10 ||
-    notaLen < 0 || notaLen > 10 ||
-    notaCie < 0 || notaCie > 10
-  ) {
-    console.log("Notas inválidas para ${nombre}.");
-    return;
-  }
- 
-//Carga de alumnos con sus notas.
+const STORAGE_KEY = "alumnos";
 
-  alumnos.push({
-    nombre: nombre,
-    matematica: notaMat,
-    lengua: notaLen,
-    ciencias: notaCie
-  });
+function guardarEnStorage(alumnos) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(alumnos));
+}
 
-  console.log(`Alumno registrado: ${nombre}`);
+function leerDeStorage() {
+  return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
 }
 
 
-//Cálculo de promedios de notas.
-function calcularPromedioAlumno(alumno) {
+// Utilidades
+
+function uid() {
+  return Date.now() + Math.floor(Math.random() * 1000);
+}
+
+function normalizarNombre(nombre) {
+  return String(nombre || "").trim();
+}
+
+function notaValida(n) {
+  return Number.isFinite(n) && n >= 0 && n <= 10;
+}
+
+function calcularPromedio(alumno) {
   return (alumno.matematica + alumno.lengua + alumno.ciencias) / 3;
 }
 
-//Parte de la construcción del resumen.
-function mostrarResumenCurso() {
-  if (alumnos.length === 0) {
-    console.log("No hay alumnos cargados.");
+function estadoAlumno(promedio) {
+  return promedio >= 6 ? "aprobado" : "riesgo";
+}
+
+function textoEstado(estado) {
+  return estado === "aprobado" ? "Aprobado" : "En riesgo";
+}
+
+
+// Estado de la app
+
+let alumnos = leerDeStorage();
+
+
+// DOM 
+
+const form = document.getElementById("formAlumno");
+const inputNombre = document.getElementById("nombre");
+const inputMat = document.getElementById("matematica");
+const inputLen = document.getElementById("lengua");
+const inputCie = document.getElementById("ciencias");
+
+const feedback = document.getElementById("feedback");
+const tbody = document.getElementById("tbodyAlumnos");
+const resumen = document.getElementById("resumen");
+
+const busqueda = document.getElementById("busqueda");
+const filtroEstado = document.getElementById("filtroEstado");
+const orden = document.getElementById("orden");
+
+const btnVaciar = document.getElementById("btnVaciar");
+const btnDemo = document.getElementById("btnDemo");
+
+
+// Feedback UI
+
+let feedbackTimer = null;
+
+function setFeedback(msg, type) {
+  feedback.textContent = msg;
+  feedback.classList.remove("is-ok", "is-bad");
+  if (type === "ok") feedback.classList.add("is-ok");
+  if (type === "bad") feedback.classList.add("is-bad");
+
+  if (feedbackTimer) clearTimeout(feedbackTimer);
+  feedbackTimer = setTimeout(() => {
+    feedback.textContent = "";
+    feedback.classList.remove("is-ok", "is-bad");
+  }, 2500);
+}
+
+
+// Render DOM dinámico
+
+function obtenerVistaAlumnos() {
+  const q = busqueda.value.trim().toLowerCase();
+  const f = filtroEstado.value;
+  const o = orden.value;
+
+  //  filter
+  let vista = alumnos.filter((a) => {
+    const matchNombre = a.nombre.toLowerCase().includes(q);
+    if (f === "todos") return matchNombre;
+    return matchNombre && a.estado === f;
+  });
+
+  //  sort
+  vista = vista.slice().sort((a, b) => {
+    if (o === "nombre-asc") return a.nombre.localeCompare(b.nombre);
+    if (o === "nombre-desc") return b.nombre.localeCompare(a.nombre);
+    if (o === "prom-desc") return b.promedio - a.promedio;
+    if (o === "prom-asc") return a.promedio - b.promedio;
+    return 0;
+  });
+
+  return vista;
+}
+
+function renderTabla() {
+  const vista = obtenerVistaAlumnos();
+
+  tbody.innerHTML = "";
+
+  if (vista.length === 0) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td colspan="8">No hay alumnos para mostrar.</td>`;
+    tbody.appendChild(tr);
     return;
   }
 
- 
-  
- 
+  for (let i = 0; i < vista.length; i++) {
+    const a = vista[i];
 
-  let sumaPromedios = 0; 
-  let aprobados = 0;
-    let enRiesgo = 0;
+    const tr = document.createElement("tr");
 
-  console.log("Alumnos y sus notas:");
+    tr.innerHTML = `
+  <td>${i + 1}</td>
+  <td>${a.nombre}</td>
 
-  //Aplicación de Ciclo for que ejecuta el array índice por índice del total de los alumnos cargados.
-  for (let i = 0; i < alumnos.length; i++) {
-    const a = alumnos[i];
-    const promedio = calcularPromedioAlumno(a);
-    sumaPromedios = sumaPromedios + promedio;
+  <td>
+    <input class="inp" data-edit="matematica" data-id="${a.id}" type="number" min="0" max="10" step="1" value="${a.matematica}">
+  </td>
+  <td>
+    <input class="inp" data-edit="lengua" data-id="${a.id}" type="number" min="0" max="10" step="1" value="${a.lengua}">
+  </td>
+  <td>
+    <input class="inp" data-edit="ciencias" data-id="${a.id}" type="number" min="0" max="10" step="1" value="${a.ciencias}">
+  </td>
+
+  <td>${a.promedio.toFixed(1)}</td>
+  <td>${a.estado === "aprobado" ? "Aprobado" : "En riesgo"}</td>
+
+  <td>
+    <div class="acciones">
+      <button class="btn-acc" data-del="${a.id}">Eliminar</button>
+    </div>
+  </td>
+`;
 
 
-    
-   
-
-//Estado del alumno con condiciones.
-    let estado;
-    if (promedio >= 6) {
-      estado = "Aprobado";
-      aprobados++;
-    } else {
-      estado = "En riesgo";
-      enRiesgo++;
-    }
-
-    console.log(
-      `${i + 1}) ${a.nombre} | Mat:${a.matematica} Len:${a.lengua} Cie:${a.ciencias} | Prom:${promedio.toFixed(
-        1
-      )} | ${estado}`
-    );
+    tbody.appendChild(tr);
   }
-
-  //Cálculo del promedio de notas de todo el grado.
-  const promedioGrado = sumaPromedios / alumnos.length;
-
-  console.log("Resumen del Grado")
-  console.log(`Alumnos cargados: ${alumnos.length}`);
-  console.log(`Promedio general del grado: ${promedioGrado.toFixed(1)}`);
-  console.log(`Aprobados: ${aprobados}`);
-  console.log(`En riesgo: ${enRiesgo}`);
-  
 }
 
-//Registro de algunos alumnos:
+function renderResumen() {
+  if (alumnos.length === 0) {
+    resumen.innerHTML = `
+      <div class="cardMini"><div class="cardMini__label">Alumnos</div><div class="cardMini__value">0</div></div>
+      <div class="cardMini"><div class="cardMini__label">Promedio general</div><div class="cardMini__value">0.0</div></div>
+      <div class="cardMini"><div class="cardMini__label">Aprobados</div><div class="cardMini__value">0</div></div>
+      <div class="cardMini"><div class="cardMini__label">En riesgo</div><div class="cardMini__value">0</div></div>
+    `;
+    return;
+  }
+
+  //  reduce
+  const promedioGeneral = alumnos.reduce((acc, a) => acc + a.promedio, 0) / alumnos.length;
+  const aprobados = alumnos.filter((a) => a.estado === "aprobado").length;
+  const enRiesgo = alumnos.filter((a) => a.estado === "riesgo").length;
+
+  resumen.innerHTML = `
+    <div class="cardMini">
+      <div class="cardMini__label">Alumnos</div>
+      <div class="cardMini__value">${alumnos.length}</div>
+    </div>
+    <div class="cardMini">
+      <div class="cardMini__label">Promedio general</div>
+      <div class="cardMini__value">${promedioGeneral.toFixed(1)}</div>
+    </div>
+    <div class="cardMini">
+      <div class="cardMini__label">Aprobados</div>
+      <div class="cardMini__value">${aprobados}</div>
+    </div>
+    <div class="cardMini">
+      <div class="cardMini__label">En riesgo</div>
+      <div class="cardMini__value">${enRiesgo}</div>
+    </div>
+  `;
+}
+
+function renderTodo() {
+  renderTabla();
+  renderResumen();
+}
 
 
-console.log("Registro de algunos:");
+// Alumnos al sistema
 
-registrarAlumno("Luz", 8, 7, 9);
-registrarAlumno("Joaquín", 6, 5, 7);
-registrarAlumno("Lautaro", 3, 4, 5);
-registrarAlumno("Mariela", 5, 6, 4);
-registrarAlumno("Alan", 8, 5, 7);
-registrarAlumno("Thiago", 10, 9, 10);
+function agregarAlumno({ nombre, matematica, lengua, ciencias }) {
+  const alumno = {
+    id: uid(),
+    nombre,
+    matematica,
+    lengua,
+    ciencias,
+  };
 
-mostrarResumenCurso();
+  alumno.promedio = calcularPromedio(alumno);
+  alumno.estado = estadoAlumno(alumno.promedio);
+
+  alumnos.push(alumno);
+  guardarEnStorage(alumnos);
+  renderTodo();
+}
+
+function eliminarAlumno(id) {
+  alumnos = alumnos.filter((a) => a.id !== id);
+  guardarEnStorage(alumnos);
+  renderTodo();
+}
+
+function actualizarNota(id, materia, valor) {
+  const nota = Number(valor);
+
+  if (!notaValida(nota)) {
+    setFeedback("Nota inválida (0 a 10).", "bad");
+    renderTodo();
+    return;
+  }
+
+  const idx = alumnos.findIndex((a) => a.id === id);
+  if (idx === -1) return;
+
+  alumnos[idx][materia] = nota;
+
+  alumnos[idx].promedio = calcularPromedio(alumnos[idx]);
+  alumnos[idx].estado = estadoAlumno(alumnos[idx].promedio);
+
+  guardarEnStorage(alumnos);
+  renderTodo();
+}
+
+function vaciarTodo() {
+  alumnos = [];
+  localStorage.removeItem(STORAGE_KEY);
+  renderTodo();
+}
+
+
+// Demo carga
+
+function cargarDemo() {
+  const demo = [
+    { nombre: "Luz", matematica: 8, lengua: 7, ciencias: 9 },
+    { nombre: "Joaquín", matematica: 6, lengua: 5, ciencias: 7 },
+    { nombre: "Lautaro", matematica: 3, lengua: 4, ciencias: 5 },
+    { nombre: "Mariela", matematica: 5, lengua: 6, ciencias: 4 },
+    { nombre: "Alan", matematica: 8, lengua: 5, ciencias: 7 },
+    { nombre: "Thiago", matematica: 10, lengua: 9, ciencias: 10 },
+  ];
+
+  // map (transformación)
+  alumnos = demo.map((d) => {
+    const a = { id: uid(), ...d };
+    a.promedio = calcularPromedio(a);
+    a.estado = estadoAlumno(a.promedio);
+    return a;
+  });
+
+  guardarEnStorage(alumnos);
+  renderTodo();
+  setFeedback("Demo cargado y guardado en localStorage.", "ok");
+}
+
+
+// Eventos
+
+form.addEventListener("submit", (e) => {
+  e.preventDefault();
+
+  const nombre = normalizarNombre(inputNombre.value);
+  const matematica = Number(inputMat.value);
+  const lengua = Number(inputLen.value);
+  const ciencias = Number(inputCie.value);
+
+  if (!nombre) {
+    setFeedback("Ingresá un nombre válido.", "bad");
+    return;
+  }
+
+  if (![matematica, lengua, ciencias].every(notaValida)) {
+    setFeedback("Las notas deben estar entre 0 y 10.", "bad");
+    return;
+  }
+
+  agregarAlumno({ nombre, matematica, lengua, ciencias });
+
+  form.reset();
+  inputNombre.focus();
+  setFeedback("Alumno agregado y guardado.", "ok");
+});
+
+// Delegación de eventos para botones e inputs dentro de la tabla
+tbody.addEventListener("click", (e) => {
+  const btn = e.target.closest("[data-del]");
+  if (!btn) return;
+
+  const id = btn.getAttribute("data-del");
+  eliminarAlumno(id);
+  setFeedback("Alumno eliminado.", "ok");
+});
+
+tbody.addEventListener("change", (e) => {
+  const inp = e.target.closest("[data-edit]");
+  if (!inp) return;
+
+  const id = inp.getAttribute("data-id");
+  const materia = inp.getAttribute("data-edit");
+  actualizarNota(id, materia, inp.value);
+  setFeedback("Nota actualizada.", "ok");
+});
+
+busqueda.addEventListener("input", renderTabla);
+filtroEstado.addEventListener("change", renderTabla);
+orden.addEventListener("change", renderTabla);
+
+btnVaciar.addEventListener("click", () => {
+  vaciarTodo();
+  setFeedback("Datos vaciados (storage limpio).", "ok");
+});
+
+btnDemo.addEventListener("click", cargarDemo);
+
+
+// Inicialización
+
+if (alumnos.length > 0) {
+  renderTodo();
+} else {
+  renderTodo();
+}
