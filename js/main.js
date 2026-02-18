@@ -1,18 +1,4 @@
 
-
-// Storage 
-
-const STORAGE_KEY = "alumnos";
-
-function guardarEnStorage(alumnos) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(alumnos));
-}
-
-function leerDeStorage() {
-  return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
-}
-
-
 // Utilidades
 
 function uid() {
@@ -40,12 +26,12 @@ function textoEstado(estado) {
 }
 
 
-// Estado de la app
+// Estado
 
 let alumnos = leerDeStorage();
 
 
-// DOM 
+// DOM
 
 const form = document.getElementById("formAlumno");
 const inputNombre = document.getElementById("nombre");
@@ -53,7 +39,7 @@ const inputMat = document.getElementById("matematica");
 const inputLen = document.getElementById("lengua");
 const inputCie = document.getElementById("ciencias");
 
-const feedback = document.getElementById("feedback");
+
 const tbody = document.getElementById("tbodyAlumnos");
 const resumen = document.getElementById("resumen");
 
@@ -64,40 +50,45 @@ const orden = document.getElementById("orden");
 const btnVaciar = document.getElementById("btnVaciar");
 const btnDemo = document.getElementById("btnDemo");
 
+// Notificaciones con SweetAlert2
+function toastOk(title) {
+  Swal.fire({
+    toast: true,
+    position: "top-end",
+    icon: "success",
+    title,
+    showConfirmButton: false,
+    timer: 1800,
+    timerProgressBar: true,
+  });
+}
 
-// Feedback UI
-
-let feedbackTimer = null;
-
-function setFeedback(msg, type) {
-  feedback.textContent = msg;
-  feedback.classList.remove("is-ok", "is-bad");
-  if (type === "ok") feedback.classList.add("is-ok");
-  if (type === "bad") feedback.classList.add("is-bad");
-
-  if (feedbackTimer) clearTimeout(feedbackTimer);
-  feedbackTimer = setTimeout(() => {
-    feedback.textContent = "";
-    feedback.classList.remove("is-ok", "is-bad");
-  }, 2500);
+function toastBad(title) {
+  Swal.fire({
+    toast: true,
+    position: "top-end",
+    icon: "error",
+    title,
+    showConfirmButton: false,
+    timer: 2200,
+    timerProgressBar: true,
+  });
 }
 
 
-// Render DOM dinámico
+// render
 
 function obtenerVistaAlumnos() {
   const q = busqueda.value.trim().toLowerCase();
   const f = filtroEstado.value;
   const o = orden.value;
 
-  //  filter
   let vista = alumnos.filter((a) => {
     const matchNombre = a.nombre.toLowerCase().includes(q);
     if (f === "todos") return matchNombre;
     return matchNombre && a.estado === f;
   });
 
-  //  sort
   vista = vista.slice().sort((a, b) => {
     if (o === "nombre-asc") return a.nombre.localeCompare(b.nombre);
     if (o === "nombre-desc") return b.nombre.localeCompare(a.nombre);
@@ -111,7 +102,6 @@ function obtenerVistaAlumnos() {
 
 function renderTabla() {
   const vista = obtenerVistaAlumnos();
-
   tbody.innerHTML = "";
 
   if (vista.length === 0) {
@@ -121,38 +111,27 @@ function renderTabla() {
     return;
   }
 
-  for (let i = 0; i < vista.length; i++) {
-    const a = vista[i];
-
+  vista.forEach((a, idx) => {
     const tr = document.createElement("tr");
-
     tr.innerHTML = `
-  <td>${i + 1}</td>
-  <td>${a.nombre}</td>
+      <td>${idx + 1}</td>
+      <td>${a.nombre}</td>
 
-  <td>
-    <input class="inp" data-edit="matematica" data-id="${a.id}" type="number" min="0" max="10" step="1" value="${a.matematica}">
-  </td>
-  <td>
-    <input class="inp" data-edit="lengua" data-id="${a.id}" type="number" min="0" max="10" step="1" value="${a.lengua}">
-  </td>
-  <td>
-    <input class="inp" data-edit="ciencias" data-id="${a.id}" type="number" min="0" max="10" step="1" value="${a.ciencias}">
-  </td>
+      <td><input class="inp" data-edit="matematica" data-id="${a.id}" type="number" min="0" max="10" step="1" value="${a.matematica}"></td>
+      <td><input class="inp" data-edit="lengua" data-id="${a.id}" type="number" min="0" max="10" step="1" value="${a.lengua}"></td>
+      <td><input class="inp" data-edit="ciencias" data-id="${a.id}" type="number" min="0" max="10" step="1" value="${a.ciencias}"></td>
 
-  <td>${a.promedio.toFixed(1)}</td>
-  <td>${a.estado === "aprobado" ? "Aprobado" : "En riesgo"}</td>
+      <td>${a.promedio.toFixed(1)}</td>
+      <td>${textoEstado(a.estado)}</td>
 
-  <td>
-    <div class="acciones">
-      <button class="btn-acc" data-del="${a.id}">Eliminar</button>
-    </div>
-  </td>
-`;
-
-
+      <td>
+        <div class="acciones">
+          <button class="btn-acc" data-del="${a.id}">Eliminar</button>
+        </div>
+      </td>
+    `;
     tbody.appendChild(tr);
-  }
+  });
 }
 
 function renderResumen() {
@@ -166,8 +145,9 @@ function renderResumen() {
     return;
   }
 
-  //  reduce
-  const promedioGeneral = alumnos.reduce((acc, a) => acc + a.promedio, 0) / alumnos.length;
+  const promedioGeneral =
+    alumnos.reduce((acc, a) => acc + a.promedio, 0) / alumnos.length;
+
   const aprobados = alumnos.filter((a) => a.estado === "aprobado").length;
   const enRiesgo = alumnos.filter((a) => a.estado === "riesgo").length;
 
@@ -196,9 +176,7 @@ function renderTodo() {
   renderResumen();
 }
 
-
-// Alumnos al sistema
-
+// Operaciones sobre los datos
 function agregarAlumno({ nombre, matematica, lengua, ciencias }) {
   const alumno = {
     id: uid(),
@@ -226,7 +204,7 @@ function actualizarNota(id, materia, valor) {
   const nota = Number(valor);
 
   if (!notaValida(nota)) {
-    setFeedback("Nota inválida (0 a 10).", "bad");
+    toastBad("Nota inválida (0 a 10).");
     renderTodo();
     return;
   }
@@ -235,7 +213,6 @@ function actualizarNota(id, materia, valor) {
   if (idx === -1) return;
 
   alumnos[idx][materia] = nota;
-
   alumnos[idx].promedio = calcularPromedio(alumnos[idx]);
   alumnos[idx].estado = estadoAlumno(alumnos[idx].promedio);
 
@@ -243,36 +220,28 @@ function actualizarNota(id, materia, valor) {
   renderTodo();
 }
 
-function vaciarTodo() {
-  alumnos = [];
-  localStorage.removeItem(STORAGE_KEY);
-  renderTodo();
-}
 
+// Fetch JSON (datos remotos)
 
-// Demo carga
+async function cargarDemoDesdeJSON() {
+  try {
+    const resp = await fetch("./data/alumnos.json");
+    if (!resp.ok) throw new Error("No se pudo cargar alumnos.json");
+    const demo = await resp.json();
 
-function cargarDemo() {
-  const demo = [
-    { nombre: "Luz", matematica: 8, lengua: 7, ciencias: 9 },
-    { nombre: "Joaquín", matematica: 6, lengua: 5, ciencias: 7 },
-    { nombre: "Lautaro", matematica: 3, lengua: 4, ciencias: 5 },
-    { nombre: "Mariela", matematica: 5, lengua: 6, ciencias: 4 },
-    { nombre: "Alan", matematica: 8, lengua: 5, ciencias: 7 },
-    { nombre: "Thiago", matematica: 10, lengua: 9, ciencias: 10 },
-  ];
+    alumnos = demo.map((d) => {
+      const a = { id: uid(), ...d };
+      a.promedio = calcularPromedio(a);
+      a.estado = estadoAlumno(a.promedio);
+      return a;
+    });
 
-  // map (transformación)
-  alumnos = demo.map((d) => {
-    const a = { id: uid(), ...d };
-    a.promedio = calcularPromedio(a);
-    a.estado = estadoAlumno(a.promedio);
-    return a;
-  });
-
-  guardarEnStorage(alumnos);
-  renderTodo();
-  setFeedback("Demo cargado y guardado en localStorage.", "ok");
+    guardarEnStorage(alumnos);
+    renderTodo();
+    toastOk("Demo cargado desde JSON (Fetch).");
+  } catch (err) {
+    toastBad("Error cargando el demo (revisá /data/alumnos.json).");
+  }
 }
 
 
@@ -287,12 +256,12 @@ form.addEventListener("submit", (e) => {
   const ciencias = Number(inputCie.value);
 
   if (!nombre) {
-    setFeedback("Ingresá un nombre válido.", "bad");
+    toastBad("Ingresá un nombre válido.");
     return;
   }
 
   if (![matematica, lengua, ciencias].every(notaValida)) {
-    setFeedback("Las notas deben estar entre 0 y 10.", "bad");
+    toastBad("Las notas deben estar entre 0 y 10.");
     return;
   }
 
@@ -300,45 +269,73 @@ form.addEventListener("submit", (e) => {
 
   form.reset();
   inputNombre.focus();
-  setFeedback("Alumno agregado y guardado.", "ok");
+  toastOk("Alumno agregado.");
 });
 
-// Delegación de eventos para botones e inputs dentro de la tabla
-tbody.addEventListener("click", (e) => {
+
+tbody.addEventListener("click", async (e) => {
   const btn = e.target.closest("[data-del]");
   if (!btn) return;
 
-  const id = btn.getAttribute("data-del");
+  const id = Number(btn.getAttribute("data-del")); 
+
+  const res = await Swal.fire({
+    title: "¿Eliminar alumno?",
+    text: "Esta acción no se puede deshacer.",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonText: "Sí, eliminar",
+    cancelButtonText: "Cancelar",
+  });
+
+  if (!res.isConfirmed) return;
+
   eliminarAlumno(id);
-  setFeedback("Alumno eliminado.", "ok");
+  toastOk("Alumno eliminado.");
 });
+
 
 tbody.addEventListener("change", (e) => {
   const inp = e.target.closest("[data-edit]");
   if (!inp) return;
 
-  const id = inp.getAttribute("data-id");
+  const id = Number(inp.getAttribute("data-id")); 
   const materia = inp.getAttribute("data-edit");
   actualizarNota(id, materia, inp.value);
-  setFeedback("Nota actualizada.", "ok");
+  toastOk("Nota actualizada.");
 });
 
 busqueda.addEventListener("input", renderTabla);
 filtroEstado.addEventListener("change", renderTabla);
 orden.addEventListener("change", renderTabla);
 
-btnVaciar.addEventListener("click", () => {
-  vaciarTodo();
-  setFeedback("Datos vaciados (storage limpio).", "ok");
+// Vaciar todos los registros (con confirmación SweetAlert2)
+btnVaciar.addEventListener("click", async () => {
+  if (alumnos.length === 0) return toastBad("No hay datos para borrar.");
+
+  const res = await Swal.fire({
+    title: "¿Vaciar todo?",
+    text: "Se borrarán alumnos y storage.",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonText: "Sí, vaciar",
+    cancelButtonText: "Cancelar",
+  });
+
+  if (!res.isConfirmed) return;
+
+  alumnos = [];
+  limpiarStorage();
+  renderTodo();
+  toastOk("Datos vaciados.");
 });
 
-btnDemo.addEventListener("click", cargarDemo);
+// Demo desde JSON + Fetch
+btnDemo.addEventListener("click", cargarDemoDesdeJSON);
 
 
-// Inicialización
+// Inicialización + precarga sugerida
+renderTodo();
 
-if (alumnos.length > 0) {
-  renderTodo();
-} else {
-  renderTodo();
-}
+// Precarga 
+inputNombre.value = "Ej: Luz";

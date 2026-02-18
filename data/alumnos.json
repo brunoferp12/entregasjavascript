@@ -1,0 +1,9 @@
+[
+    { "nombre": "Luz", "matematica": 8, "lengua": 7, "ciencias": 9 },
+    { "nombre": "Joaquín", "matematica": 6, "lengua": 5, "ciencias": 7 },
+    { "nombre": "Lautaro", "matematica": 3, "lengua": 4, "ciencias": 5 },
+    { "nombre": "Mariela", "matematica": 5, "lengua": 6, "ciencias": 4 },
+    { "nombre": "Alan", "matematica": 8, "lengua": 5, "ciencias": 7 },
+    { "nombre": "Thiago", "matematica": 10, "lengua": 9, "ciencias": 10 }
+  ]
+  
